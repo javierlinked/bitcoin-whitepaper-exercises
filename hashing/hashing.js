@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 var crypto = require("crypto");
@@ -28,16 +29,62 @@ Blockchain.blocks.push({
 });
 
 // TODO: insert each line into blockchain
-// for (let line of poem) {
-// }
+for (let line of poem) {
+	Blockchain.blocks.push(createBlock(line));
+}
 
-// console.log(`Blockchain is valid: ${verifyChain(Blockchain)}`);
+console.log(Blockchain);
+console.log(`Blockchain is valid: ${verifyChain(Blockchain)}`);
 
 
 // **********************************
 
+
 function blockHash(bl) {
 	return crypto.createHash("sha256").update(
-		// TODO: use block data to calculate hash
+		JSON.stringify(bl)
 	).digest("hex");
 }
+
+
+function createBlock(data) {
+	const block = {
+		index: Blockchain.blocks.length,
+		data,
+		timestamp: Date.now(),
+		prevHash: Blockchain.blocks[Blockchain.blocks.length - 1].hash,
+	};
+	block.hash = blockHash(block);
+
+	return block;
+}
+
+
+function verifyChain(blockchain) {
+	if (blockchain.blocks?.length === 0) {
+		return false;
+	}
+
+	let res = false;
+	for (const block of blockchain.blocks) {
+		if (block.index === 0) {
+			res = verifyGenesis(block);
+		} else {
+			res = block.prevHash !== "" && verifyHash(block) && block.prevHash === blockchain.blocks[block.index - 1].hash;
+		}
+
+	}
+	return res;
+}
+
+function verifyGenesis(block) {
+	return block.hash === "000000";
+}
+
+
+function verifyHash(block) {
+	let _block = Object.assign({}, block);
+	delete _block.hash;
+	return block.hash === blockHash(_block)
+}
+
