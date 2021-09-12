@@ -1,3 +1,5 @@
+// @ts-check
+
 "use strict";
 
 var path = require("path");
@@ -45,13 +47,14 @@ async function addPoem() {
 	var transactions = [];
 
 	// TODO: add poem lines as authorized transactions
-	// for (let line of poem) {
-	// }
+	for (let line of poem) {
+		const tr = createTransaction(line);
+		await authorizeTransaction(tr);
+		transactions.push(tr)
+	}
 
 	var bl = createBlock(transactions);
-
 	Blockchain.blocks.push(bl);
-
 	return Blockchain;
 }
 
@@ -78,7 +81,7 @@ function transactionHash(tr) {
 	).digest("hex");
 }
 
-async function createSignature(text,privKey) {
+async function createSignature(text, privKey) {
 	var privKeyObj = openpgp.key.readArmored(privKey).keys[0];
 
 	var options = {
@@ -128,7 +131,9 @@ async function verifyBlock(bl) {
 		if (bl.hash !== blockHash(bl)) return false;
 		if (!Array.isArray(bl.data)) return false;
 
-		// TODO: verify transactions in block
+		for(let tr of bl.data) {
+			return verifyTransaction(tr);
+		}
 	}
 
 	return true;
@@ -144,3 +149,22 @@ async function verifyChain(chain) {
 
 	return true;
 }
+
+function createTransaction(line) {
+	let tr = {
+		data: line
+	};
+	tr.hash = transactionHash(tr);
+	return tr;
+}
+
+async function authorizeTransaction(tr) {
+	tr.pubKey = PUB_KEY_TEXT;
+	tr.signature = await createSignature(tr.hash,PRIV_KEY_TEXT);
+	return tr;
+}
+
+async function verifyTransaction(tr) {
+	return tr.hash === transactionHash(tr) && tr.signature && tr.pubKey && await verifySignature(tr.signature,tr.pubKey);
+}
+
